@@ -46,6 +46,10 @@ public class FitbitConsoleApplication {
 				.getResourceCredentialsByUser(localUser);
 		creds.setTempTokenVerifier(pin);
 		fitbit.getTokenCredentials(localUser);
+		
+		// you can save the access_token here to reuse later
+//		System.out.println("Your access_token: " + creds.getAccessToken());
+//		System.out.println("Your access_token_secret: " + creds.getAccessTokenSecret());
 
 		UserInfo profile = fitbit.getClient().getUserInfo(localUser);
 		System.out.println(profile.getDisplayName() + ", member since "
