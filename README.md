@@ -37,6 +37,6 @@ Example output
 [1]: http://dev.fitbit.com/
 [2]: http://maven.apache.org/ 
 [3]: https://dev.fitbit.com/apps
-[4]: XXX/fork
+[4]: https://github.com/MoriTanosuke/fitbit-cli-example/fork
 [5]: http://eclipse.org/
-[6]: XXX/pulls
+[6]: https://github.com/MoriTanosuke/fitbit-cli-example/pulls
