@@ -3,22 +3,42 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>de.kopis</groupId>
 	<artifactId>fitbit-cli-example</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.0.2-SNAPSHOT</version>
+	<!--
+	We need the fitbit4j repository on Github to build this.
+	<repositories>
+		<repository>
+			<id>fitbit4j</id>
+			<name>fitbit4j repository on GitHub</name>
+			<url>http://github.com/Fitbit/fitbit4j/tree/gh-pages</url>
+		</repository>
+	</repositories>
+	-->
 	<dependencies>
 		<dependency>
 			<groupId>com.fitbit</groupId>
 			<artifactId>fitbit4j</artifactId>
-			<version>1.0.24-SNAPSHOT</version>
+			<version>1.0.25</version>
 		</dependency>
 	</dependencies>
 	<build>
 		<plugins>
 			<plugin>
-				<groupId>org.codehaus.mojo</groupId>
-				<artifactId>exec-maven-plugin</artifactId>
-				<version>1.2.1</version>
+				<artifactId>maven-assembly-plugin</artifactId>
+				<version>2.3</version>
+				<executions>
+					<execution>
+						<id>make-assembly</id> <!-- this is used for inheritance merges -->
+						<phase>package</phase> <!-- bind to the packaging phase -->
+						<goals>
+							<goal>single</goal>
+						</goals>
+					</execution>
+				</executions>
 				<configuration>
-					<mainClass>FitbitConsoleApplication</mainClass>
+					<descriptorRefs>
+						<descriptorRef>jar-with-dependencies</descriptorRef>
+					</descriptorRefs>
 				</configuration>
 			</plugin>
 		</plugins>
