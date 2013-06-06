@@ -18,7 +18,7 @@
 		<dependency>
 			<groupId>com.fitbit</groupId>
 			<artifactId>fitbit4j</artifactId>
-			<version>1.0.25</version>
+			<version>1.0.26-SNAPSHOT</version>
 		</dependency>
 	</dependencies>
 	<build>
