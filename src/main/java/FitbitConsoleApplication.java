@@ -4,6 +4,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -63,7 +64,8 @@ public class FitbitConsoleApplication {
 
     // setup data to load
     LocalDate startDate = FitbitApiService.getValidLocalDateOrNull(today());
-    TimePeriod period = TimePeriod.ONE_MONTH;
+    // load all data we can get
+    TimePeriod period = TimePeriod.MAX;
     TimeSeriesResourceType[] typesToLoad = new TimeSeriesResourceType[] { TimeSeriesResourceType.ACTIVE_SCORE,
         TimeSeriesResourceType.ACTIVITY_CALORIES, TimeSeriesResourceType.AWAKENINGS_COUNT,
         TimeSeriesResourceType.CALORIES_IN, TimeSeriesResourceType.CALORIES_OUT, TimeSeriesResourceType.DISTANCE,
@@ -83,13 +85,32 @@ public class FitbitConsoleApplication {
       data.put(type, loadData(localUser, client, startDate, fitbitUser, type, period));
     }
 
-    // print loaded data
+    // transform into Map<DATE, Data[]>
+    Map<String, List<String>> dataPerDay = new HashMap<String, List<String>>();
+    System.out.print("Date");
     for (TimeSeriesResourceType type : data.keySet()) {
+      System.out.print("\t" + type);
       List<Data> series = data.get(type);
-      System.out.println("Date" + "\t" + type.name());
       for (Data day : series) {
-        System.out.println(day.getDateTime() + "\t" + day.getValue());
+        String dateTime = day.getDateTime();
+        if (!dataPerDay.containsKey(dateTime)) {
+          dataPerDay.put(dateTime, new ArrayList<String>());
+        }
+        // add to list
+        List<String> d = dataPerDay.get(dateTime);
+        d.add(day.getValue());
       }
+    }
+    System.out.println();
+
+    // print data
+    for (String dateTime : dataPerDay.keySet()) {
+      List<String> list = dataPerDay.get(dateTime);
+      System.out.print(dateTime);
+      for (String value : list) {
+        System.out.print("\t" + value);
+      }
+      System.out.println();
     }
   }
 
