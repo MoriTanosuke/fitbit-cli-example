@@ -1,14 +1,20 @@
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.StringWriter;
+import java.io.Writer;
+import java.text.NumberFormat;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import org.joda.time.LocalDate;
@@ -37,7 +43,16 @@ public class FitbitConsoleApplication {
   private static final String clientConsumerKey = System.getProperty("CONSUMER_KEY");
   private static final String clientSecret = System.getProperty("CONSUMER_SECRET");
 
+  private static String outputFile = null;
+
+  // always parse input in US locale
+  private static final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
+
   public static void main(String[] args) throws FitbitAPIException, IOException {
+    if(args != null && args.length > 0) {
+      outputFile = args[0];
+    }
+
     FitbitApiCredentialsCache credentialsCache = new FitbitApiCredentialsCacheMapImpl();
     FitbitAPIEntityCache entityCache = new FitbitApiEntityCacheMapImpl();
     FitbitApiSubscriptionStorage subscriptionStore = new FitbitApiSubscriptionStorageInMemoryImpl();
@@ -85,33 +100,48 @@ public class FitbitConsoleApplication {
       data.put(type, loadData(localUser, client, startDate, fitbitUser, type, period));
     }
 
+    Writer dest = new StringWriter();
+    if(outputFile != null) {
+      dest = new FileWriter(outputFile);
+    }
+    final BufferedWriter writer = new BufferedWriter(dest);
+
     // transform into Map<DATE, Data[]>
-    Map<String, List<String>> dataPerDay = new HashMap<String, List<String>>();
-    System.out.print("Date");
+    Map<String, List<Number>> dataPerDay = new HashMap<String, List<Number>>();
+    writer.write("Date");
     for (TimeSeriesResourceType type : data.keySet()) {
-      System.out.print("\t" + type);
+      writer.write("\t" + type);
       List<Data> series = data.get(type);
       for (Data day : series) {
         String dateTime = day.getDateTime();
         if (!dataPerDay.containsKey(dateTime)) {
-          dataPerDay.put(dateTime, new ArrayList<String>());
+          dataPerDay.put(dateTime, new ArrayList<Number>());
         }
-        // add to list
-        List<String> d = dataPerDay.get(dateTime);
-        d.add(day.getValue());
-      }
-    }
-    System.out.println();
 
-    // print data
-    for (String dateTime : dataPerDay.keySet()) {
-      List<String> list = dataPerDay.get(dateTime);
-      System.out.print(dateTime);
-      for (String value : list) {
-        System.out.print("\t" + value);
+        // add to list
+        List<Number> d = dataPerDay.get(dateTime);
+        String value = day.getValue();
+        try {
+          d.add(numberFormat.parse(value));
+        } catch (ParseException e) {
+          System.err.println("Can not parse value '" + value + "', using ZERO. Original message: " + e.getMessage());
+          d.add(0);
+        }
       }
-      System.out.println();
     }
+    writer.write("\n");
+
+    // write data
+    for (String dateTime : dataPerDay.keySet()) {
+      List<Number> list = dataPerDay.get(dateTime);
+      writer.write(dateTime);
+      for (Number value : list) {
+        writer.write("\t" + value);
+      }
+      writer.write("\n");
+    }
+    
+    System.out.println("All done.");
   }
 
   private static APIResourceCredentials load(LocalUserDetail localUser,
