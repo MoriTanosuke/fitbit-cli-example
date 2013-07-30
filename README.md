@@ -10,11 +10,11 @@ How do I run this?
 
 [Register a *desktop* application][3] and copy your applications *consumer key* and *secret*.
 
-Make sure you have [Maven][2] installed, then run
+Make sure you have [Maven][2] installed and [fitbit4j][0] in your local repository, then run
 
     mvn -DCONSUMER_KEY=yourapplicationkey -DCONSUMER_SECRET=yourapplicationsecret exec:java
 
-on your command-line.
+on your command-line. If you have to use a proxy, provide additional parameters *-Dhttp.proxyHost=YOURPROXY -Dhttp.proxyPort=1234*.
 
 How can I build on top of this?
 ===============================
@@ -25,13 +25,8 @@ How can I build on top of this?
 
 to create project files for [Eclipse][5]. Start hacking and don't forget to [submit a pull request][6]
 
-Example output
-==============
 
-    Open http://www.fitbit.com/oauth/authorize?oauth_token=0dc1323a475f2cd77e9b30c72bc86559
-    Enter PIN:INSERTTHECOPIEDPINHERE
-    YOURNAME, member since 2000-01-01
-    Your sleep on 2012-01-01: inBed=234 asleep=123
+
 
 [0]: https://github.com/Fitbit/fitbit4j
 [1]: http://dev.fitbit.com/
