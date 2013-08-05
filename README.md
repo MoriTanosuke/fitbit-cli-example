@@ -12,9 +12,13 @@ How do I run this?
 
 Make sure you have [Maven][2] installed and [fitbit4j][0] in your local repository, then run
 
-    mvn -DCONSUMER_KEY=yourapplicationkey -DCONSUMER_SECRET=yourapplicationsecret exec:java
+    mvn -DCONSUMER_KEY=yourapplicationkey -DCONSUMER_SECRET=yourapplicationsecret -Dexec.args="<FILENAME> <PERIOD>" exec:java
 
-on your command-line. If you have to use a proxy, provide additional parameters *-Dhttp.proxyHost=YOURPROXY -Dhttp.proxyPort=1234*.
+on your command-line.
+
+Adding *-Dexec.args="<FILENAME> <PERIOD>"* is optional. PERIOD is one of the recognized time periods, like "6m".
+
+If you have to use a proxy, provide additional parameters *-Dhttp.proxyHost=YOURPROXY -Dhttp.proxyPort=1234*.
 
 How can I build on top of this?
 ===============================
