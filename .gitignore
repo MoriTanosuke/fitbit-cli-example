@@ -1,7 +1,9 @@
-/.settings
-/target
-/.classpath
-/.project
-/.classpath
-/.settings
-/.project
+.settings
+target
+.classpath
+.project
+.classpath
+.settings
+.project
+.idea
+fitbit-cli-example.iml
