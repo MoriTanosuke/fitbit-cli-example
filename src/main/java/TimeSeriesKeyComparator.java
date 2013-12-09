@@ -8,7 +8,6 @@ import java.util.Comparator;
  * For example, {@link TimeSeriesResourceType#WATER} comes after {@link TimeSeriesResourceType#EFFICIENCY}.
  */
 public class TimeSeriesKeyComparator implements Comparator<TimeSeriesResourceType> {
-    @Override
     public int compare(TimeSeriesResourceType o1, TimeSeriesResourceType o2) {
         return o1.name().compareTo(o2.name());
     }
