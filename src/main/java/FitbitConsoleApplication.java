@@ -72,7 +72,6 @@ public class FitbitConsoleApplication {
         // setup data to load
         LocalDate startDate = FitbitApiService.getValidLocalDateOrNull(today());
         TimeSeriesResourceType[] typesToLoad = new TimeSeriesResourceType[]{
-                TimeSeriesResourceType.ACTIVE_SCORE,
                 TimeSeriesResourceType.ACTIVITY_CALORIES,
                 TimeSeriesResourceType.AWAKENINGS_COUNT,
                 TimeSeriesResourceType.CALORIES_IN,
