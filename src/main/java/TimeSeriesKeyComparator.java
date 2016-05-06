@@ -1,14 +1,14 @@
-import com.fitbit.api.common.model.timeseries.TimeSeriesResourceType;
-
 import java.util.Comparator;
 
+import model.DataType;
+
 /**
- * Compares {@link TimeSeriesResourceType} based on the name of the series.
- *
- * For example, {@link TimeSeriesResourceType#WATER} comes after {@link TimeSeriesResourceType#EFFICIENCY}.
+ * Compares {@link DataType} based on the name of the series.
+ * <p>
+ * For example, {@link DataType#WATER} comes after {@link DataType#SLEEP_EFFICIENCY}.
  */
-public class TimeSeriesKeyComparator implements Comparator<TimeSeriesResourceType> {
-    public int compare(TimeSeriesResourceType o1, TimeSeriesResourceType o2) {
+public class TimeSeriesKeyComparator implements Comparator<DataType> {
+    public int compare(DataType o1, DataType o2) {
         return o1.name().compareTo(o2.name());
     }
 }

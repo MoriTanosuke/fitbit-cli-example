@@ -1,0 +1,32 @@
+{
+  "sleep-efficiency": [
+    {
+      "dateTime": "2016-04-30",
+      "value": "89"
+    },
+    {
+      "dateTime": "2016-05-01",
+      "value": "88"
+    },
+    {
+      "dateTime": "2016-05-02",
+      "value": "90"
+    },
+    {
+      "dateTime": "2016-05-03",
+      "value": "89"
+    },
+    {
+      "dateTime": "2016-05-04",
+      "value": "90"
+    },
+    {
+      "dateTime": "2016-05-05",
+      "value": "90"
+    },
+    {
+      "dateTime": "2016-05-06",
+      "value": "0"
+    }
+  ]
+}

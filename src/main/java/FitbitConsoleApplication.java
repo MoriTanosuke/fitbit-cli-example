@@ -1,35 +1,65 @@
-import com.fitbit.api.FitbitAPIException;
-import com.fitbit.api.client.*;
-import com.fitbit.api.client.service.FitbitAPIClientService;
-import com.fitbit.api.common.model.timeseries.Data;
-import com.fitbit.api.common.model.timeseries.TimePeriod;
-import com.fitbit.api.common.model.timeseries.TimeSeriesResourceType;
-import com.fitbit.api.common.model.user.UserInfo;
-import com.fitbit.api.common.service.FitbitApiService;
-import com.fitbit.api.model.APIResourceCredentials;
-import com.fitbit.api.model.FitbitUser;
-import org.joda.time.LocalDate;
-
 import java.io.*;
+import java.text.DateFormat;
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.logging.Logger;
+
+import com.github.scribejava.core.builder.ServiceBuilder;
+import com.github.scribejava.core.model.OAuth2AccessToken;
+import com.github.scribejava.core.model.OAuthRequest;
+import com.github.scribejava.core.model.Response;
+import com.github.scribejava.core.model.Verb;
+import com.github.scribejava.core.oauth.OAuth20Service;
+import com.google.gson.Gson;
+import model.DataType;
+import model.DateValue;
+import model.Profile;
+import model.TimeSeries;
 
 public class FitbitConsoleApplication {
-    private static final String apiBaseUrl = "api.fitbit.com";
-    private static final String fitbitSiteBaseUrl = "http://www.fitbit.com";
+    private static final Logger LOG = Logger.getLogger(FitbitConsoleApplication.class.getName());
     private static final String clientConsumerKey = System.getProperty("CONSUMER_KEY");
     private static final String clientSecret = System.getProperty("CONSUMER_SECRET");
+    public static final String BASE_URL = "https://api.fitbit.com/1/user/-";
+    public static final String EXTENSION_JSON = ".json";
 
     private static String outputFile = null;
-    // load all data that we can get by default
-    private static TimePeriod period = TimePeriod.MAX;
+    private static final Gson GSON = new Gson();
+
+
+    private enum TimePeriod {
+        ONE_WEEK("1w"),
+        THREE_MONTH("3m"),
+        ONE_YEAR("1y");
+
+        private final String value;
+
+        TimePeriod(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        public static TimePeriod findByShortForm(String value) {
+            for (TimePeriod v : values()) {
+                if (v.getValue().equals(value)) return v;
+            }
+            throw new IllegalArgumentException("Can not find value: " + value);
+        }
+    }
 
     // always parse input in US locale
     private static final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
+    private static final DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
 
-    public static void main(String[] args) throws FitbitAPIException, IOException {
+    public static void main(String[] args) throws IOException {
+        // default to 1 week
+        TimePeriod period = TimePeriod.ONE_WEEK;
+
         if (args != null && args.length > 0) {
             if (args.length >= 1) {
                 outputFile = args[0];
@@ -44,84 +74,93 @@ public class FitbitConsoleApplication {
             }
         }
 
-        FitbitApiCredentialsCache credentialsCache = new FitbitApiCredentialsCacheMapImpl();
-        FitbitAPIEntityCache entityCache = new FitbitApiEntityCacheMapImpl();
-        FitbitApiSubscriptionStorage subscriptionStore = new FitbitApiSubscriptionStorageInMemoryImpl();
-        FitbitAPIClientService<FitbitApiClientAgent> fitbit = new FitbitAPIClientService<FitbitApiClientAgent>(
-                new FitbitApiClientAgent(apiBaseUrl, fitbitSiteBaseUrl, credentialsCache),
-                clientConsumerKey, clientSecret, credentialsCache, entityCache, subscriptionStore);
+        // TODO authorize
+        OAuth20Service service = new ServiceBuilder()
+                .apiKey(clientConsumerKey)
+                .apiSecret(clientSecret)
+                .build(FitbitApi.instance());
+        LOG.info("=== Fitbits OAuth Workflow ===");
 
-        final LocalUserDetail localUser = new LocalUserDetail("1");
+        Scanner in = new Scanner(System.in);
+        // Obtain the Authorization URL
+        LOG.info("Fetching the Authorization URL...");
+        final String authorizationUrl = service.getAuthorizationUrl();
+        LOG.info("Got the Authorization URL!");
+        System.out.println("Now go and authorize the application here:");
+        System.out.println(authorizationUrl);
+        System.out.println("And paste the authorization code here");
+        System.out.print(">> ");
+        final String code = in.nextLine();
 
-        // if (load(localUser, fitbit) == null) {
-        String url = fitbit.getResourceOwnerAuthorizationURL(localUser, "");
-        System.out.println("Open " + url);
-        System.out.print("Enter PIN:");
-        String pin = readFromUser();
-        APIResourceCredentials creds = fitbit.getResourceCredentialsByUser(localUser);
-        creds.setTempTokenVerifier(pin);
-        // }
-        fitbit.getTokenCredentials(localUser);
-        // save(localUser, fitbit);
+        // Trade the Request Token and Verfier for the Access Token
+        LOG.info("Trading the Request Token for an Access Token...");
+        final OAuth2AccessToken accessToken = service.getAccessToken(code);
+        LOG.info("Got the Access Token: " + accessToken);
+        //TODO load user profile
+        final OAuthRequest request = new OAuthRequest(Verb.GET, BASE_URL + "/profile.json", service);
+        service.signRequest(accessToken, request);
+        final Response response = request.send();
+        Profile profile = GSON.fromJson(response.getBody(), Profile.class);
+        System.out.println("Loading data for user " + profile.getUser().getDisplayName() + ", member since " + profile.getUser().getMemberSince());
 
-        FitbitApiClientAgent client = fitbit.getClient();
-        UserInfo profile = client.getUserInfo(localUser);
-        System.out.println(profile.getDisplayName() + ", member since " + profile.getMemberSince());
-        System.out.println("Loading data for " + period);
-
+        LOG.info("Loading data for " + period);
         // setup data to load
-        LocalDate startDate = FitbitApiService.getValidLocalDateOrNull(today());
-        TimeSeriesResourceType[] typesToLoad = new TimeSeriesResourceType[]{
-                TimeSeriesResourceType.ACTIVITY_CALORIES,
-                TimeSeriesResourceType.AWAKENINGS_COUNT,
-                TimeSeriesResourceType.CALORIES_IN,
-                TimeSeriesResourceType.CALORIES_OUT,
-                TimeSeriesResourceType.DISTANCE,
-                TimeSeriesResourceType.EFFICIENCY,
-                TimeSeriesResourceType.ELEVATION,
-                TimeSeriesResourceType.FAT,
-                TimeSeriesResourceType.FLOORS,
-                TimeSeriesResourceType.MINUTES_AFTER_WAKEUP,
-                TimeSeriesResourceType.MINUTES_ASLEEP,
-                TimeSeriesResourceType.MINUTES_AWAKE,
-                TimeSeriesResourceType.MINUTES_FAIRLY_ACTIVE,
-                TimeSeriesResourceType.MINUTES_LIGHTLY_ACTIVE,
-                TimeSeriesResourceType.MINUTES_SEDENTARY,
-                TimeSeriesResourceType.MINUTES_TO_FALL_ASLEEP,
-                TimeSeriesResourceType.MINUTES_VERY_ACTIVE,
-                TimeSeriesResourceType.STEPS,
-                TimeSeriesResourceType.TIME_ENTERED_BED,
-                TimeSeriesResourceType.TIME_IN_BED,
-                TimeSeriesResourceType.WATER,
-                TimeSeriesResourceType.WEIGHT};
+        final String startDate = today();
+        final DataType[] typesToLoad = new DataType[]{
+//                DataType.ACTIVITY_CALORIES,
+//                DataType.AWAKENINGS_COUNT,
+//                DataType.CALORIES_IN,
+//                DataType.CALORIES_OUT,
+                DataType.DISTANCE,
+                DataType.SLEEP_EFFICIENCY,
+//                DataType.ELEVATION,
+//                DataType.FAT,
+                DataType.FLOORS,
+                DataType.MINUTES_AFTER_WAKEUP,
+                DataType.MINUTES_ASLEEP,
+                DataType.MINUTES_AWAKE,
+                DataType.MINUTES_FAIRLY_ACTIVE,
+                DataType.MINUTES_LIGHTLY_ACTIVE,
+                DataType.MINUTES_SEDENTARY,
+                DataType.MINUTES_TO_FALL_ASLEEP,
+                DataType.MINUTES_VERY_ACTIVE,
+                DataType.STEPS,
+//                DataType.TIME_ENTERED_BED,
+//                DataType.TIME_IN_BED,
+//                DataType.WATER,
+//                DataType.WEIGHT
+        };
 
         // load over all types and load data
-        FitbitUser fitbitUser = new FitbitUser("-");
-        TimeSeriesKeyComparator timeSeriesKeyComparator = new TimeSeriesKeyComparator();
-        Map<TimeSeriesResourceType, List<Data>> data = new TreeMap<TimeSeriesResourceType, List<Data>>(timeSeriesKeyComparator);
-        for (TimeSeriesResourceType type : typesToLoad) {
-            data.put(
-                    type,
-                    loadData(localUser, client, startDate, fitbitUser, type, period));
+        final Comparator timeSeriesKeyComparator = new TimeSeriesKeyComparator();
+        Map<DataType, List<DateValue>> data = new TreeMap<>(timeSeriesKeyComparator);
+        for (DataType type : typesToLoad) {
+            data.put(type, loadData(service, accessToken, startDate, type, period));
         }
 
+        writeCsv(outputFile, data);
+
+        LOG.info("All done.");
+    }
+
+    private static void writeCsv(String fileName, Map<DataType, List<DateValue>> data) throws IOException {
         Writer dest = new StringWriter();
-        if (outputFile != null) {
-            dest = new FileWriter(outputFile);
-            System.out.println("Writing data to " + outputFile);
+        if (fileName != null) {
+            dest = new FileWriter(fileName);
+            LOG.info("Writing data to " + fileName);
         }
         final BufferedWriter writer = new BufferedWriter(dest);
 
         // transform into Map<DATE, Data[]>
-        Map<String, List<Number>> dataPerDay = new TreeMap<String, List<Number>>();
+        Map<String, List<Number>> dataPerDay = new TreeMap<>();
         writer.write("Date");
-        for (TimeSeriesResourceType type : data.keySet()) {
-            writer.write("\t" + type);
-            List<Data> series = data.get(type);
-            for (Data day : series) {
+        for (DataType type : data.keySet()) {
+            writer.write(";" + type);
+            List<DateValue> series = data.get(type);
+            for (DateValue day : series) {
                 String dateTime = day.getDateTime();
                 if (!dataPerDay.containsKey(dateTime)) {
-                    dataPerDay.put(dateTime, new ArrayList<Number>());
+                    dataPerDay.put(dateTime, new ArrayList<>());
                 }
 
                 // add to list
@@ -130,7 +169,7 @@ public class FitbitConsoleApplication {
                 try {
                     d.add(numberFormat.parse(value));
                 } catch (ParseException e) {
-                    System.err.println("Can not parse value '" + value
+                    LOG.severe("Can not parse value '" + value
                             + "' for type '" + type + "', using ZERO. Original message: "
                             + e.getMessage());
                     d.add(0);
@@ -144,69 +183,42 @@ public class FitbitConsoleApplication {
             List<Number> list = dataPerDay.get(dateTime);
             writer.write(dateTime);
             for (Number value : list) {
-                writer.write("\t" + value);
+                writer.write(";" + value);
             }
             writer.write("\n");
         }
         writer.close();
-
-        System.out.println("All done.");
     }
 
-    private static APIResourceCredentials load(LocalUserDetail localUser,
-                                               FitbitAPIClientService<FitbitApiClientAgent> fitbit) {
-        APIResourceCredentials creds = null;
-        try {
-            BufferedReader in = new BufferedReader(new FileReader("token.properties"));
-            String accessToken = in.readLine();
-            in.close();
-            BufferedReader in2 = new BufferedReader(new FileReader("secret.properties"));
-            String accessTokenSecret = in2.readLine();
-            in2.close();
-            creds = new APIResourceCredentials(localUser.getUserId(), "", "");
-            // creds = fitbit.getResourceCredentialsByUser(localUser);
-            creds.setAccessToken(accessToken);
-            creds.setAccessTokenSecret(accessTokenSecret);
-        } catch (FileNotFoundException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+    private static List<DateValue> loadData(OAuth20Service service, OAuth2AccessToken accessToken, String startDate,
+                                            DataType type,
+                                            TimePeriod period) {
+        LOG.info("Loading " + type.name() + "...");
+        final List<DateValue> timeSeries = new ArrayList<>();
+
+        final String url = buildUrlForTimeSeries(startDate, type, period);
+        LOG.info("Requesting URL " + url);
+
+        final OAuthRequest request = new OAuthRequest(Verb.GET, url, service);
+        service.signRequest(accessToken, request);
+        final Response response = request.send();
+
+        Object o = GSON.fromJson(new StringReader(response.getBody()), type.getClazz());
+        if (o instanceof TimeSeries) {
+            TimeSeries values = (TimeSeries) o;
+            if (values.getValues().isEmpty()) {
+                LOG.info("No values received: " + o + " " + response.getBody());
+            }
+            timeSeries.addAll(values.getValues());
+        } else {
+            LOG.info("Not yet mapped: " + o + " " + response.getBody());
         }
-        return creds;
-    }
 
-    private static void save(LocalUserDetail localUser,
-                             FitbitAPIClientService<FitbitApiClientAgent> fitbit) {
-        try {
-            FileWriter out = new FileWriter("token.properties");
-            out.write(fitbit.getResourceCredentialsByUser(localUser).getAccessToken());
-            out.close();
-            FileWriter out2 = new FileWriter("secret.properties");
-            out2.write(fitbit.getResourceCredentialsByUser(localUser).getAccessTokenSecret());
-            out2.close();
-        } catch (FileNotFoundException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-    }
-
-    private static List<Data> loadData(final LocalUserDetail localUser,
-                                       FitbitApiClientAgent client, LocalDate startDate,
-                                       FitbitUser fitbitUser, TimeSeriesResourceType type,
-                                       TimePeriod period) throws FitbitAPIException {
-        System.out.println("Loading " + type.name() + "...");
-        List<Data> timeSeries = client.getTimeSeries(localUser, fitbitUser, type, startDate, period);
-        /*
-		 * System.out.print(">>> " + type + " "); for (Data data : timeSeries) {
-		 * System.out.print(data.getDateTime() + ":" + data.getValue() + " "); }
-		 * System.out.println();
-		 */
         return timeSeries;
+    }
+
+    private static String buildUrlForTimeSeries(String startDate, DataType type, TimePeriod period) {
+        return BASE_URL + "/" + type.getPath() + "/date/" + startDate + "/" + period.getValue() + EXTENSION_JSON;
     }
 
     private static String today() {
@@ -220,15 +232,7 @@ public class FitbitConsoleApplication {
     }
 
     private static String today(Date date) {
-        return new SimpleDateFormat(FitbitApiService.LOCAL_DATE_PATTERN).format(date);
+        return dateFormat.format(date);
     }
 
-    private static String readFromUser() throws IOException {
-        StringBuffer pin = new StringBuffer();
-        int in = -1;
-        while ((in = System.in.read()) != '\n') {
-            pin.append((char) in);
-        }
-        return pin.toString().trim();
-    }
 }
