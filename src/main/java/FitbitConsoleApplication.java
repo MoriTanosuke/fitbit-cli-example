@@ -5,6 +5,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.logging.Logger;
+import java.util.prefs.Preferences;
 
 import com.github.scribejava.core.builder.ServiceBuilder;
 import com.github.scribejava.core.model.OAuth2AccessToken;
@@ -17,15 +18,15 @@ import model.DataType;
 import model.DateValue;
 import model.Profile;
 import model.TimeSeries;
+import service.FitbitApi;
 
 public class FitbitConsoleApplication {
     private static final Logger LOG = Logger.getLogger(FitbitConsoleApplication.class.getName());
     private static final String clientConsumerKey = System.getProperty("CONSUMER_KEY");
     private static final String clientSecret = System.getProperty("CONSUMER_SECRET");
-    public static final String BASE_URL = "https://api.fitbit.com/1/user/-";
-    public static final String EXTENSION_JSON = ".json";
+    private static final String BASE_URL = "https://api.fitbit.com/1/user/-";
+    private static final String EXTENSION_JSON = ".json";
 
-    private static String outputFile = null;
     private static final Gson GSON = new Gson();
 
 
@@ -59,6 +60,7 @@ public class FitbitConsoleApplication {
     public static void main(String[] args) throws IOException {
         // default to 1 week
         TimePeriod period = TimePeriod.ONE_WEEK;
+        String outputFile = "fitbit.csv";
 
         if (args != null && args.length > 0) {
             if (args.length >= 1) {
@@ -74,27 +76,13 @@ public class FitbitConsoleApplication {
             }
         }
 
-        // TODO authorize
-        OAuth20Service service = new ServiceBuilder()
+        final OAuth20Service service = new ServiceBuilder()
                 .apiKey(clientConsumerKey)
                 .apiSecret(clientSecret)
                 .build(FitbitApi.instance());
         LOG.info("=== Fitbits OAuth Workflow ===");
+        final OAuth2AccessToken accessToken = getAccessToken(service);
 
-        Scanner in = new Scanner(System.in);
-        // Obtain the Authorization URL
-        LOG.info("Fetching the Authorization URL...");
-        final String authorizationUrl = service.getAuthorizationUrl();
-        LOG.info("Got the Authorization URL!");
-        System.out.println("Now go and authorize the application here:");
-        System.out.println(authorizationUrl);
-        System.out.println("And paste the authorization code here");
-        System.out.print(">> ");
-        final String code = in.nextLine();
-
-        // Trade the Request Token and Verfier for the Access Token
-        LOG.info("Trading the Request Token for an Access Token...");
-        final OAuth2AccessToken accessToken = service.getAccessToken(code);
         LOG.info("Got the Access Token: " + accessToken);
         //TODO load user profile
         final OAuthRequest request = new OAuthRequest(Verb.GET, BASE_URL + "/profile.json", service);
@@ -141,6 +129,38 @@ public class FitbitConsoleApplication {
         writeCsv(outputFile, data);
 
         LOG.info("All done.");
+    }
+
+    private static OAuth2AccessToken getAccessToken(OAuth20Service service) {
+        final Preferences prefs = Preferences.userNodeForPackage(FitbitConsoleApplication.class);
+        byte[] storedAccessToken = prefs.getByteArray("accessToken", null);
+        OAuth2AccessToken accessToken;
+        if (storedAccessToken == null) {
+            // authorize with fitbit if no accessToken found
+            Scanner in = new Scanner(System.in);
+            // Obtain the Authorization URL
+            LOG.info("Fetching the Authorization URL...");
+            final String authorizationUrl = service.getAuthorizationUrl();
+            LOG.info("Got the Authorization URL!");
+            System.out.println("Now go and authorize the application here:");
+            System.out.println(authorizationUrl);
+            System.out.println("And paste the authorization code here");
+            System.out.print(">> ");
+            final String code = in.nextLine();
+
+            // Trade the Request Token and Verfier for the Access Token
+            LOG.info("Trading the Request Token for an Access Token...");
+            accessToken = service.getAccessToken(code);
+            LOG.info("Storing access token for later");
+            storedAccessToken = accessToken.getAccessToken().getBytes();
+            prefs.putByteArray("accessToken", storedAccessToken);
+        } else {
+            LOG.info("Using stored access token");
+            accessToken = new OAuth2AccessToken(new String(storedAccessToken));
+        }
+
+        return accessToken;
+
     }
 
     private static void writeCsv(String fileName, Map<DataType, List<DateValue>> data) throws IOException {

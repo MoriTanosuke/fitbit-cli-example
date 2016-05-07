@@ -1,3 +1,5 @@
+package service;
+
 import java.util.Base64;
 
 import com.github.scribejava.core.builder.api.DefaultApi20;
