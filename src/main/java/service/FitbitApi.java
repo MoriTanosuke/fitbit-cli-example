@@ -8,7 +8,7 @@ import com.github.scribejava.core.oauth.OAuth20Service;
 import com.github.scribejava.core.utils.OAuthEncoder;
 
 public class FitbitApi extends DefaultApi20 {
-    private static final String DEFAULT_SCOPE = String.join(" ", "sleep", "nutrition", "activity", "profile");
+    private static final String DEFAULT_SCOPE = String.join(" ", "sleep", "nutrition", "activity", "profile", "weight");
     public static final String AUTHORIZATION_URL = "https://www.fitbit.com/oauth2/authorize?client_id=%s&response_type=%s&scope=%s";
     public static final String RESPONSE_TYPE = "code";
 

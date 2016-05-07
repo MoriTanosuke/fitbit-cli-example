@@ -1,7 +1,6 @@
 package model;
 
 public enum DataType {
-    //TODO fix clazz
     ACTIVITY_CALORIES("ACTIVITY_CALORIES", "activities/activityCalories", ActivityCalories.class),
     DISTANCE("DISTANCE", "activities/distance", Distance.class),
     ELEVATION("ELEVATION", "activities/elevation", Elevation.class),
@@ -19,12 +18,11 @@ public enum DataType {
     MINUTES_TO_FALL_ASLEEP("MINUTES_TO_FALL_ASLEEP", "sleep/minutesToFallAsleep", SleepMinutesToFallAsleep.class),
     TIME_ENTERED_BED("TIME_ENTERED_BED", "sleep/startTime", SleepStartTime.class),
     TIME_IN_BED("TIME_IN_BED", "sleep/timeInBed", SleepTimeInBed.class),
-//        CALORIES_IN("CALORIES_IN", "calories", Steps.class),
-//        CALORIES_OUT("CALORIES_OUT", "calories", Steps.class),
-//        FAT("FAT", "calories", Steps.class),
-//        WATER("WATER", "calories", Steps.class),
-//        WEIGHT("WEIGHT", "calories", Steps.class)
-    ;
+    CALORIES_IN("CALORIES_IN", "foods/log/caloriesIn", CaloriesIn.class),
+    CALORIES_OUT("CALORIES_OUT", "foods/log/caloriesOut", CaloriesOut.class),
+    FAT("FAT", "body/fat", Fat.class),
+    WATER("WATER", "foods/logs/water", Water.class),
+    WEIGHT("WEIGHT", "body/weight", Weight.class);
 
     private final String name;
     private final String path;

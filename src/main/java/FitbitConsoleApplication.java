@@ -5,6 +5,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.logging.Logger;
+import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 
 import com.github.scribejava.core.builder.ServiceBuilder;
@@ -57,16 +58,28 @@ public class FitbitConsoleApplication {
     private static final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
     private static final DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, BackingStoreException {
         // default to 1 week
         TimePeriod period = TimePeriod.ONE_WEEK;
         String outputFile = "fitbit.csv";
 
-        if (args != null && args.length > 0) {
-            if (args.length >= 1) {
+        final List<String> arguments = new ArrayList<>();
+        Arrays.stream(args).forEach(a -> arguments.add(a));
+        LOG.info("Arguments: " + arguments);
+
+        if (arguments.contains("--reset")) {
+            // remove accessToken from preferences
+            final Preferences prefs = Preferences.userNodeForPackage(FitbitConsoleApplication.class);
+            prefs.clear();
+            arguments.remove("--reset");
+            LOG.info("Preferences cleared.");
+        }
+
+        if (!arguments.isEmpty()) {
+            if (arguments.size() >= 1) {
                 outputFile = args[0];
             }
-            if (args.length >= 2) {
+            if (arguments.size() >= 2) {
                 period = TimePeriod.findByShortForm(args[1]);
                 if (period == null) {
                     throw new IllegalArgumentException(
@@ -88,21 +101,25 @@ public class FitbitConsoleApplication {
         final OAuthRequest request = new OAuthRequest(Verb.GET, BASE_URL + "/profile.json", service);
         service.signRequest(accessToken, request);
         final Response response = request.send();
-        Profile profile = GSON.fromJson(response.getBody(), Profile.class);
-        System.out.println("Loading data for user " + profile.getUser().getDisplayName() + ", member since " + profile.getUser().getMemberSince());
+        final Profile profile = GSON.fromJson(response.getBody(), Profile.class);
+        if (profile != null && profile.getUser() != null) {
+            System.out.println("Loading data for user " + profile.getUser().getDisplayName() + ", member since " + profile.getUser().getMemberSince());
+        } else {
+            LOG.severe("Can not load user profile! (" + response.getBody() + ")");
+        }
 
         LOG.info("Loading data for " + period);
         // setup data to load
         final String startDate = today();
         final DataType[] typesToLoad = new DataType[]{
-//                DataType.ACTIVITY_CALORIES,
-//                DataType.AWAKENINGS_COUNT,
-//                DataType.CALORIES_IN,
-//                DataType.CALORIES_OUT,
+                DataType.ACTIVITY_CALORIES,
+                DataType.AWAKENINGS_COUNT,
+                DataType.CALORIES_IN,
+                DataType.CALORIES_OUT,
                 DataType.DISTANCE,
                 DataType.SLEEP_EFFICIENCY,
-//                DataType.ELEVATION,
-//                DataType.FAT,
+                DataType.ELEVATION,
+                DataType.FAT,
                 DataType.FLOORS,
                 DataType.MINUTES_AFTER_WAKEUP,
                 DataType.MINUTES_ASLEEP,
@@ -113,10 +130,10 @@ public class FitbitConsoleApplication {
                 DataType.MINUTES_TO_FALL_ASLEEP,
                 DataType.MINUTES_VERY_ACTIVE,
                 DataType.STEPS,
-//                DataType.TIME_ENTERED_BED,
-//                DataType.TIME_IN_BED,
-//                DataType.WATER,
-//                DataType.WEIGHT
+                DataType.TIME_ENTERED_BED,
+                DataType.TIME_IN_BED,
+                DataType.WATER,
+                DataType.WEIGHT
         };
 
         // load over all types and load data

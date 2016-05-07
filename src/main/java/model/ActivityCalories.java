@@ -6,7 +6,7 @@ import java.util.List;
 import com.google.gson.annotations.SerializedName;
 
 public class ActivityCalories extends TimeSeries {
-    @SerializedName("activity-calories")
+    @SerializedName("activities-activityCalories")
     private List<DateValue> values = new ArrayList<>();
 
     @Override

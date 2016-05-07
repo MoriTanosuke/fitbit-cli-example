@@ -7,10 +7,10 @@ import com.google.gson.annotations.SerializedName;
 
 public class Floors extends TimeSeries {
     @SerializedName("activities-floors")
-    private List<DateValue> floors = new ArrayList<>();
+    private List<DateValue> values = new ArrayList<>();
 
     @Override
     public List<DateValue> getValues() {
-        return floors;
+        return values;
     }
 }

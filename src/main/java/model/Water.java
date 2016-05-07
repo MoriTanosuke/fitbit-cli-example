@@ -5,8 +5,8 @@ import java.util.List;
 
 import com.google.gson.annotations.SerializedName;
 
-public class SleepStartTime extends TimeSeries {
-    @SerializedName("sleep-startTime")
+public class Water extends TimeSeries {
+    @SerializedName("water")
     private List<DateValue> values = new ArrayList<>();
 
     @Override
